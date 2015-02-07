@@ -1,0 +1,43 @@
+#!/bin/sh -f
+
+# Load the system's periodic defaults files and then any other periodic configs
+if [ -r /etc/defaults/periodic.conf ]; then
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
+fi
+
+update_flags=""
+update_mesg=""
+
+do_portsnap=$(echo ${portsnap_enable:-NO} |tr '[[:lower:]]' '[[:upper:]]')
+do_update=$(echo ${portsnap_update_enable:-YES} |tr '[[:lower:]]' '[[:upper:]]')
+do_index_only=$(echo ${portsnap_update_index_enable:-YES} |tr '[[:lower:]]' '[[:upper:]]')
+ports_dir=$(echo ${portsnap_ports_dir:-} |tr '[[:lower:]]' '[[:upper:]]')
+
+# Exit if portsnap is disabled
+[ "$do_portsnap" = "YES" ] || exit $rc
+
+if [ "$do_index_only" = "YES" ]; then
+    update_flags="$update_flags -I"
+    update_mesg=" index"
+fi
+
+if [ -n "$ports_dir" ]; then
+    update_flags="$update_flags -p $ports_dir"
+    update_mesg="$update_mesg in $ports_dir"
+fi
+
+rc=0
+
+echo "portsnap: fetching updates"
+echo
+/usr/sbin/portsnap cron
+
+if [ "$do_update" = "YES" ]; then
+    echo
+    echo "portsnap: updating ports$update_mesg"
+    echo
+    /usr/sbin/portsnap $update_flags update
+fi
+
+exit $rc
